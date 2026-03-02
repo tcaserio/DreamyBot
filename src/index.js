@@ -53,8 +53,11 @@ client.once('clientReady', () => {
 
 // Connect to DB then start bot
 init()
-  .then(() => client.login(process.env.BOT_TOKEN))
+  .then(() => {
+    console.log('Database initialized.');
+    return client.login(process.env.BOT_TOKEN);
+  })
   .catch(err => {
-    console.error('Failed to initialize database:', err);
+    console.error('Startup failed:', err);
     process.exit(1);
   });
