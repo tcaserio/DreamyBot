@@ -42,7 +42,6 @@ module.exports = {
       const month = interaction.options.getInteger('month');
       const day = interaction.options.getInteger('day');
 
-      // Validate that the day is real for the given month (using a non-leap year)
       const testDate = new Date(2001, month - 1, day);
       if (testDate.getMonth() !== month - 1) {
         return interaction.reply({
@@ -51,14 +50,15 @@ module.exports = {
         });
       }
 
-      db.prepare(`
-        INSERT INTO birthdays (user_id, username, month, day)
-        VALUES (?, ?, ?, ?)
-        ON CONFLICT(user_id) DO UPDATE SET
-          username = excluded.username,
-          month = excluded.month,
-          day = excluded.day
-      `).run(interaction.user.id, interaction.user.username, month, day);
+      await db.run(
+        `INSERT INTO birthdays (user_id, username, month, day)
+         VALUES ($1, $2, $3, $4)
+         ON CONFLICT (user_id) DO UPDATE SET
+           username = EXCLUDED.username,
+           month    = EXCLUDED.month,
+           day      = EXCLUDED.day`,
+        [interaction.user.id, interaction.user.username, month, day]
+      );
 
       const monthName = new Date(2001, month - 1, 1).toLocaleString('default', { month: 'long' });
       return interaction.reply({
@@ -68,8 +68,11 @@ module.exports = {
     }
 
     if (sub === 'remove') {
-      const result = db.prepare('DELETE FROM birthdays WHERE user_id = ?').run(interaction.user.id);
-      if (result.changes === 0) {
+      const result = await db.run(
+        'DELETE FROM birthdays WHERE user_id = $1',
+        [interaction.user.id]
+      );
+      if (result.rowCount === 0) {
         return interaction.reply({
           content: `You don't have a birthday registered.`,
           flags: MessageFlags.Ephemeral
@@ -82,9 +85,9 @@ module.exports = {
     }
 
     if (sub === 'list') {
-      const rows = db.prepare(
+      const rows = await db.getAll(
         'SELECT * FROM birthdays ORDER BY month, day'
-      ).all();
+      );
 
       if (!rows.length) {
         return interaction.reply({
@@ -112,7 +115,10 @@ module.exports = {
     }
 
     if (sub === 'check') {
-      const row = db.prepare('SELECT * FROM birthdays WHERE user_id = ?').get(interaction.user.id);
+      const row = await db.getOne(
+        'SELECT * FROM birthdays WHERE user_id = $1',
+        [interaction.user.id]
+      );
       if (!row) {
         return interaction.reply({
           content: `You haven't set a birthday yet. Use \`/birthday set\` to add it.`,

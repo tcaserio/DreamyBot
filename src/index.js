@@ -2,8 +2,10 @@ require('dotenv').config();
 const { Client, GatewayIntentBits, Collection, MessageFlags } = require('discord.js');
 const fs = require('fs');
 const path = require('path');
-const db = require('./database');
+const { init, getOne, getAll, run } = require('./database');
 const scheduler = require('./scheduler');
+
+const db = { getOne, getAll, run };
 
 const client = new Client({
   intents: [GatewayIntentBits.Guilds]
@@ -36,7 +38,7 @@ client.on('interactionCreate', async interaction => {
         await interaction.reply(msg);
       }
     } catch {
-      // Interaction already expired or handled — nothing to do
+      // Interaction already expired or handled
     }
   }
 });
@@ -49,4 +51,10 @@ client.once('clientReady', () => {
   scheduler.reschedule();
 });
 
-client.login(process.env.BOT_TOKEN);
+// Connect to DB then start bot
+init()
+  .then(() => client.login(process.env.BOT_TOKEN))
+  .catch(err => {
+    console.error('Failed to initialize database:', err);
+    process.exit(1);
+  });

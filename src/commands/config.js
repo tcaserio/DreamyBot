@@ -73,11 +73,11 @@ module.exports = {
 
     if (sub === 'birthday-channel') {
       const channel = interaction.options.getChannel('channel');
-      db.prepare(`
-        INSERT INTO config (key, value) VALUES ('birthday_channel_id', ?)
-        ON CONFLICT(key) DO UPDATE SET value = excluded.value
-      `).run(channel.id);
-
+      await db.run(
+        `INSERT INTO config (key, value) VALUES ('birthday_channel_id', $1)
+         ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value`,
+        [channel.id]
+      );
       return interaction.reply({
         content: `Birthday announcements will now be posted in ${channel}.`,
         flags: MessageFlags.Ephemeral
@@ -86,13 +86,12 @@ module.exports = {
 
     if (sub === 'birthday-time') {
       const hour = interaction.options.getInteger('hour');
-      db.prepare(`
-        INSERT INTO config (key, value) VALUES ('birthday_hour', ?)
-        ON CONFLICT(key) DO UPDATE SET value = excluded.value
-      `).run(hour.toString());
-
+      await db.run(
+        `INSERT INTO config (key, value) VALUES ('birthday_hour', $1)
+         ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value`,
+        [hour.toString()]
+      );
       scheduler.reschedule();
-
       return interaction.reply({
         content: `Birthday announcements will now be sent at **${formatHour(hour)}**.`,
         flags: MessageFlags.Ephemeral
@@ -101,21 +100,18 @@ module.exports = {
 
     if (sub === 'birthday-timezone') {
       const timezone = interaction.options.getString('timezone');
-
       if (!isValidTimezone(timezone)) {
         return interaction.reply({
           content: `**${timezone}** isn't a valid timezone. Use an IANA timezone name like:\n- \`America/New_York\`\n- \`America/Los_Angeles\`\n- \`America/Chicago\`\n- \`Europe/London\`\n- \`Asia/Tokyo\``,
           flags: MessageFlags.Ephemeral
         });
       }
-
-      db.prepare(`
-        INSERT INTO config (key, value) VALUES ('birthday_timezone', ?)
-        ON CONFLICT(key) DO UPDATE SET value = excluded.value
-      `).run(timezone);
-
+      await db.run(
+        `INSERT INTO config (key, value) VALUES ('birthday_timezone', $1)
+         ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value`,
+        [timezone]
+      );
       scheduler.reschedule();
-
       return interaction.reply({
         content: `Timezone set to **${timezone}**.`,
         flags: MessageFlags.Ephemeral
@@ -123,14 +119,15 @@ module.exports = {
     }
 
     if (sub === 'test-birthday') {
-      const channelRow = db.prepare("SELECT value FROM config WHERE key = 'birthday_channel_id'").get();
+      const channelRow = await db.getOne(
+        `SELECT value FROM config WHERE key = 'birthday_channel_id'`
+      );
       if (!channelRow) {
         return interaction.reply({
           content: `No birthday channel set. Use \`/config birthday-channel\` first.`,
           flags: MessageFlags.Ephemeral
         });
       }
-
       const channel = interaction.client.channels.cache.get(channelRow.value);
       if (!channel) {
         return interaction.reply({
@@ -138,9 +135,7 @@ module.exports = {
           flags: MessageFlags.Ephemeral
         });
       }
-
       await channel.send(scheduler.buildBirthdayMessage(interaction.user.id));
-
       return interaction.reply({
         content: `Test announcement sent to ${channel}!`,
         flags: MessageFlags.Ephemeral
@@ -149,15 +144,16 @@ module.exports = {
 
     if (sub === 'remove-birthday') {
       const user = interaction.options.getUser('user');
-      const result = db.prepare('DELETE FROM birthdays WHERE user_id = ?').run(user.id);
-
-      if (result.changes === 0) {
+      const result = await db.run(
+        'DELETE FROM birthdays WHERE user_id = $1',
+        [user.id]
+      );
+      if (result.rowCount === 0) {
         return interaction.reply({
           content: `${user} doesn't have a birthday registered.`,
           flags: MessageFlags.Ephemeral
         });
       }
-
       return interaction.reply({
         content: `Birthday removed for ${user}.`,
         flags: MessageFlags.Ephemeral
@@ -165,13 +161,13 @@ module.exports = {
     }
 
     if (sub === 'show') {
-      const channelRow = db.prepare("SELECT value FROM config WHERE key = 'birthday_channel_id'").get();
-      const hourRow = db.prepare("SELECT value FROM config WHERE key = 'birthday_hour'").get();
-      const tzRow = db.prepare("SELECT value FROM config WHERE key = 'birthday_timezone'").get();
+      const channelRow  = await db.getOne(`SELECT value FROM config WHERE key = 'birthday_channel_id'`);
+      const hourRow     = await db.getOne(`SELECT value FROM config WHERE key = 'birthday_hour'`);
+      const tzRow       = await db.getOne(`SELECT value FROM config WHERE key = 'birthday_timezone'`);
 
       const channelText = channelRow ? `<#${channelRow.value}>` : 'not set';
-      const hour = hourRow ? parseInt(hourRow.value) : 9;
-      const timezone = tzRow ? tzRow.value : 'UTC';
+      const hour        = hourRow ? parseInt(hourRow.value) : 9;
+      const timezone    = tzRow ? tzRow.value : 'UTC';
 
       return interaction.reply({
         content: [

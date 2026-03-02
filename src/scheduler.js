@@ -30,49 +30,53 @@ function reschedule() {
     task = null;
   }
 
-  const hourRow = _db.prepare("SELECT value FROM config WHERE key = 'birthday_hour'").get();
-  const tzRow = _db.prepare("SELECT value FROM config WHERE key = 'birthday_timezone'").get();
+  // Read config async, then schedule
+  Promise.all([
+    _db.getOne(`SELECT value FROM config WHERE key = 'birthday_hour'`),
+    _db.getOne(`SELECT value FROM config WHERE key = 'birthday_timezone'`)
+  ]).then(([hourRow, tzRow]) => {
+    const hour     = hourRow ? parseInt(hourRow.value) : 9;
+    const timezone = tzRow  ? tzRow.value              : 'UTC';
 
-  const hour = hourRow ? parseInt(hourRow.value) : 9;
-  const timezone = tzRow ? tzRow.value : 'UTC';
+    task = cron.schedule(`0 ${hour} * * *`, async () => {
+      const now   = new Date();
+      const parts = new Intl.DateTimeFormat('en-US', {
+        timeZone: timezone,
+        month: 'numeric',
+        day:   'numeric'
+      }).formatToParts(now);
+      const month = parseInt(parts.find(p => p.type === 'month').value);
+      const day   = parseInt(parts.find(p => p.type === 'day').value);
 
-  task = cron.schedule(`0 ${hour} * * *`, async () => {
-    // Get the current date in the configured timezone
-    const now = new Date();
-    const parts = new Intl.DateTimeFormat('en-US', {
-      timeZone: timezone,
-      month: 'numeric',
-      day: 'numeric'
-    }).formatToParts(now);
-    const month = parseInt(parts.find(p => p.type === 'month').value);
-    const day = parseInt(parts.find(p => p.type === 'day').value);
+      const birthdays = await _db.getAll(
+        'SELECT * FROM birthdays WHERE month = $1 AND day = $2',
+        [month, day]
+      );
+      if (!birthdays.length) return;
 
-    const birthdays = _db.prepare(
-      'SELECT * FROM birthdays WHERE month = ? AND day = ?'
-    ).all(month, day);
+      const channelRow = await _db.getOne(
+        `SELECT value FROM config WHERE key = 'birthday_channel_id'`
+      );
+      if (!channelRow) {
+        console.error('Birthday channel not configured. Use /config birthday-channel in your server.');
+        return;
+      }
 
-    if (!birthdays.length) return;
+      const channel = _client.channels.cache.get(channelRow.value);
+      if (!channel) {
+        console.error('Birthday channel not found. It may have been deleted.');
+        return;
+      }
 
-    const channelRow = _db.prepare("SELECT value FROM config WHERE key = 'birthday_channel_id'").get();
-    if (!channelRow) {
-      console.error('Birthday channel not configured. Use /config birthday-channel in your server.');
-      return;
-    }
+      for (const birthday of birthdays) {
+        await channel.send(buildBirthdayMessage(birthday.user_id));
+      }
+    }, { timezone });
 
-    const channel = _client.channels.cache.get(channelRow.value);
-    if (!channel) {
-      console.error('Birthday channel not found. It may have been deleted.');
-      return;
-    }
-
-    for (const birthday of birthdays) {
-      await channel.send(buildBirthdayMessage(birthday.user_id));
-    }
-  }, { timezone });
-
-  const displayHour = hour % 12 || 12;
-  const ampm = hour < 12 ? 'AM' : 'PM';
-  console.log(`Birthday announcements scheduled for ${displayHour}:00 ${ampm} (${timezone})`);
+    const displayHour = hour % 12 || 12;
+    const ampm = hour < 12 ? 'AM' : 'PM';
+    console.log(`Birthday announcements scheduled for ${displayHour}:00 ${ampm} (${timezone})`);
+  }).catch(err => console.error('Failed to schedule birthday cron:', err));
 }
 
 module.exports = { init, reschedule, buildBirthdayMessage };

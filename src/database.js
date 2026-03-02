@@ -1,25 +1,29 @@
-const Database = require('better-sqlite3');
-const path = require('path');
-const fs = require('fs');
+const { Pool } = require('pg');
 
-const dataDir = path.join(__dirname, '..', 'data');
-if (!fs.existsSync(dataDir)) {
-  fs.mkdirSync(dataDir);
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: { rejectUnauthorized: false }
+});
+
+async function init() {
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS birthdays (
+      user_id TEXT PRIMARY KEY,
+      username TEXT NOT NULL,
+      month INTEGER NOT NULL,
+      day INTEGER NOT NULL
+    )
+  `);
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS config (
+      key TEXT PRIMARY KEY,
+      value TEXT NOT NULL
+    )
+  `);
 }
 
-const db = new Database(path.join(dataDir, 'birthdays.db'));
+const getOne = async (text, params = []) => (await pool.query(text, params)).rows[0];
+const getAll = async (text, params = []) => (await pool.query(text, params)).rows;
+const run   = async (text, params = []) => pool.query(text, params);
 
-db.exec(`
-  CREATE TABLE IF NOT EXISTS birthdays (
-    user_id TEXT PRIMARY KEY,
-    username TEXT NOT NULL,
-    month INTEGER NOT NULL,
-    day INTEGER NOT NULL
-  );
-  CREATE TABLE IF NOT EXISTS config (
-    key TEXT PRIMARY KEY,
-    value TEXT NOT NULL
-  );
-`);
-
-module.exports = db;
+module.exports = { init, getOne, getAll, run };
