@@ -17,6 +17,7 @@ const gifs = [
   'https://tenor.com/view/pokemon-happy-birthday-togepi-pikachu-gif-24350194',
   'https://tenor.com/view/happy-birthday-anya-spy-x-family-gif-1300526479044624702',
   'https://tenor.com/view/burger-eating-frieren-frieren-beyond-journey%27s-end-sousou-no-frieren-gif-22821570668236283',
+  'https://tenor.com/view/happy-birthday-sailor-moon-cake-anime-happy-gif-27259615'
 ];
 
 module.exports = { messages, gifs };
