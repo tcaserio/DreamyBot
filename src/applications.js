@@ -7,68 +7,64 @@ let client;
 // ─── Message builder ────────────────────────────────────────────────────────
 
 function buildApplicationMessage(app) {
-  const howFound = JSON.parse(app.how_found);
+  const howFound  = JSON.parse(app.how_found);
   const responses = app.responses || [];
   const giftsGiven = app.gifts_given || {};
 
-  const approvals = responses.filter(r => r.action === 'approve');
-  const denials   = responses.filter(r => r.action === 'deny');
+  const approvals   = responses.filter(r => r.action === 'approve');
+  const denials     = responses.filter(r => r.action === 'deny');
   const hasApproval = approvals.length > 0;
   const hasBoth     = hasApproval && denials.length > 0;
 
-  // ── Application card ──
-  const lines = [
-    '📋 **New FC Application**',
-    '━━━━━━━━━━━━━━━━━━━━━━━━',
-    `🎮 **In-Game Name:** ${app.in_game_name}`,
-    `📜 **Rules Agreement:** ${app.rules_agreed ? '✅ Agreed' : '❌ Not agreed'}`,
-    `🌟 **How they found us:**\n> ${howFound.join('\n> ')}`,
-    `💬 **Vibe Check:**\n> ${app.vibe_check.replace(/\n/g, '\n> ')}`,
-    `🎁 **Welcome Package:** ${app.welcome_package || 'None selected'}`,
-    `🏷️ **Discord Username:** ${app.discord_username || 'N/A'}`,
+  const fields = [
+    { name: 'Character Name', value: app.in_game_name, inline: true },
+    { name: 'Discord',        value: app.discord_username || 'N/A', inline: true },
+    { name: 'Rules',          value: app.rules_agreed ? 'Agreed' : 'Not agreed', inline: true },
+    { name: 'How they found us', value: howFound.join('\n'), inline: false },
+    { name: 'How would you help a lost member?', value: app.vibe_check, inline: false },
+    { name: 'Welcome Package', value: app.welcome_package || 'None', inline: false },
   ];
 
   // ── Response history ──
   if (responses.length > 0) {
-    lines.push('');
-    lines.push('━━━━━━━━━━━━━━━━━━━━━━━━');
-    lines.push('📊 **Leadership Responses:**');
-    for (const r of responses) {
+    const responseLines = responses.map(r => {
       const icon = r.action === 'approve' ? '✅' : '❌';
       const verb = r.action === 'approve' ? 'Approved' : 'Denied';
       const ts   = `<t:${Math.floor(new Date(r.timestamp).getTime() / 1000)}:f>`;
-      lines.push(`${icon} ${verb} by **${r.username}** — ${ts}`);
-    }
-    if (hasBoth) {
-      lines.push('');
-      lines.push('⚠️ **Warning:** Both approvals and denials recorded — please discuss before proceeding!');
-    }
+      return `${icon} ${verb} by **${r.username}** — ${ts}`;
+    });
+    fields.push({
+      name:  hasBoth ? '⚠️ Responses — conflicting votes, please discuss' : 'Responses',
+      value: responseLines.join('\n'),
+      inline: false,
+    });
   }
 
   // ── Gift tracking (only show after at least one approval) ──
   if (hasApproval) {
-    lines.push('');
-    lines.push('━━━━━━━━━━━━━━━━━━━━━━━━');
-    lines.push('🎁 **Welcome Package Delivery:**');
-
-    const giftLines = [];
     const pajamaLabel = app.welcome_package && app.welcome_package !== 'None'
       ? app.welcome_package
       : 'Pajama Set';
 
+    const giftLines = [];
     for (const [key, label] of [['bed', 'Magicked Bed'], ['pajama', pajamaLabel], ['pillow', 'Plush Pillow Minion']]) {
       const given = giftsGiven[key];
       if (given) {
         const ts = `<t:${Math.floor(new Date(given.given_at).getTime() / 1000)}:f>`;
-        giftLines.push(`✅ **${label}** — given by **${given.given_by}** ${ts}`);
+        giftLines.push(`✅ **${label}** — given by ${given.given_by} ${ts}`);
       } else {
-        giftLines.push(`⬜ ${label}`);
+        giftLines.push(`○ ${label}`);
       }
     }
-    lines.push(giftLines.join('\n'));
+    fields.push({ name: 'Welcome Package Delivery', value: giftLines.join('\n'), inline: false });
   }
 
-  return lines.join('\n');
+  return {
+    color:     0x9B8EC4,
+    title:     'New FC Application',
+    fields,
+    timestamp: new Date(app.created_at).toISOString(),
+  };
 }
 
 function buildComponents(app) {
@@ -170,7 +166,7 @@ function init(dbInstance, clientInstance) {
       // Post to leadership channel
       const channel = await client.channels.fetch(channelRow.value);
       const message = await channel.send({
-        content: buildApplicationMessage(application),
+        embeds:     [buildApplicationMessage(application)],
         components: buildComponents(application),
       });
 

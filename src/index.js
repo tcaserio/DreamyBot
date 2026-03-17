@@ -80,7 +80,7 @@ async function handleButton(interaction) {
 
     const updated = await db.getOne('SELECT * FROM applications WHERE id = $1', [appId]);
     await interaction.update({
-      content:    applications.buildApplicationMessage(updated),
+      embeds:     [applications.buildApplicationMessage(updated)],
       components: applications.buildComponents(updated),
     });
     return;
@@ -112,7 +112,7 @@ async function handleButton(interaction) {
 
     const updated = await db.getOne('SELECT * FROM applications WHERE id = $1', [appId]);
     await interaction.update({
-      content:    applications.buildApplicationMessage(updated),
+      embeds:     [applications.buildApplicationMessage(updated)],
       components: applications.buildComponents(updated),
     });
     return;
