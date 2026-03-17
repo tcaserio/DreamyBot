@@ -10,10 +10,7 @@ const applications = require('./applications');
 const db = { getOne, getAll, run };
 
 const client = new Client({
-  intents: [
-    GatewayIntentBits.Guilds,
-    GatewayIntentBits.GuildMembers,
-  ]
+  intents: [GatewayIntentBits.Guilds]
 });
 
 // Load commands
@@ -151,18 +148,6 @@ async function handleButton(interaction) {
   }
 }
 
-// Auto-assign Awakened role on member join
-client.on('guildMemberAdd', async member => {
-  try {
-    const roleRow = await db.getOne(`SELECT value FROM config WHERE key = 'awakened_role_id'`);
-    if (!roleRow) return;
-    const role = member.guild.roles.cache.get(roleRow.value);
-    if (!role) return;
-    await member.roles.add(role);
-  } catch (err) {
-    console.error('Failed to assign Awakened role:', err);
-  }
-});
 
 client.on('error', err => console.error('Client error:', err));
 

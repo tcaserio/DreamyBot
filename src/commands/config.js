@@ -60,15 +60,6 @@ module.exports = {
         )
     )
     .addSubcommand(sub =>
-      sub.setName('awakened-role')
-        .setDescription('Set the provisional role auto-assigned when a new member joins the server')
-        .addRoleOption(opt =>
-          opt.setName('role')
-            .setDescription('The Awakened (provisional) role')
-            .setRequired(true)
-        )
-    )
-    .addSubcommand(sub =>
       sub.setName('application-secret')
         .setDescription('Set the shared secret used to authenticate incoming application webhooks')
         .addStringOption(opt =>
@@ -158,19 +149,6 @@ module.exports = {
       });
     }
 
-    if (sub === 'awakened-role') {
-      const role = interaction.options.getRole('role');
-      await db.run(
-        `INSERT INTO config (key, value) VALUES ('awakened_role_id', $1)
-         ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value`,
-        [role.id]
-      );
-      return interaction.reply({
-        content: `New members will automatically receive the **${role.name}** role when they join.`,
-        flags: MessageFlags.Ephemeral
-      });
-    }
-
     if (sub === 'application-secret') {
       const secret = interaction.options.getString('secret');
       await db.run(
@@ -227,21 +205,19 @@ module.exports = {
     }
 
     if (sub === 'show') {
-      const [channelRow, hourRow, tzRow, appChannelRow, awakenedRoleRow, appSecretRow] = await Promise.all([
+      const [channelRow, hourRow, tzRow, appChannelRow, appSecretRow] = await Promise.all([
         db.getOne(`SELECT value FROM config WHERE key = 'birthday_channel_id'`),
         db.getOne(`SELECT value FROM config WHERE key = 'birthday_hour'`),
         db.getOne(`SELECT value FROM config WHERE key = 'birthday_timezone'`),
         db.getOne(`SELECT value FROM config WHERE key = 'applications_channel_id'`),
-        db.getOne(`SELECT value FROM config WHERE key = 'awakened_role_id'`),
         db.getOne(`SELECT value FROM config WHERE key = 'application_webhook_secret'`),
       ]);
 
-      const channelText    = channelRow    ? `<#${channelRow.value}>`         : 'not set';
-      const hour           = hourRow       ? parseInt(hourRow.value)           : 9;
-      const timezone       = tzRow         ? tzRow.value                       : 'UTC';
-      const appChannelText = appChannelRow ? `<#${appChannelRow.value}>`       : 'not set';
-      const awakenedText   = awakenedRoleRow ? `<@&${awakenedRoleRow.value}>` : 'not set';
-      const secretText     = appSecretRow  ? '`[set]`'                        : 'not set';
+      const channelText    = channelRow    ? `<#${channelRow.value}>`   : 'not set';
+      const hour           = hourRow       ? parseInt(hourRow.value)     : 9;
+      const timezone       = tzRow         ? tzRow.value                 : 'UTC';
+      const appChannelText = appChannelRow ? `<#${appChannelRow.value}>` : 'not set';
+      const secretText     = appSecretRow  ? '`[set]`'                  : 'not set';
 
       return interaction.reply({
         content: [
@@ -254,7 +230,6 @@ module.exports = {
           '',
           '**FC Applications**',
           `Leadership channel: ${appChannelText}`,
-          `Awakened role: ${awakenedText}`,
           `Webhook secret: ${secretText}`,
         ].join('\n'),
         flags: MessageFlags.Ephemeral
