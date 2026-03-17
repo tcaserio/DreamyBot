@@ -20,6 +20,23 @@ async function init() {
       value TEXT NOT NULL
     )
   `);
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS applications (
+      id SERIAL PRIMARY KEY,
+      in_game_name TEXT NOT NULL,
+      rules_agreed BOOLEAN NOT NULL,
+      how_found TEXT NOT NULL,
+      vibe_check TEXT NOT NULL,
+      welcome_package TEXT,
+      discord_username TEXT,
+      status TEXT NOT NULL DEFAULT 'pending',
+      responses JSONB NOT NULL DEFAULT '[]',
+      gifts_given JSONB NOT NULL DEFAULT '{}',
+      message_id TEXT,
+      channel_id TEXT,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `);
 }
 
 const getOne = async (text, params = []) => (await pool.query(text, params)).rows[0];
