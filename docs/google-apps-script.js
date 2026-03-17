@@ -12,15 +12,15 @@
 //   4. Submit a test form entry to verify the bot receives it.
 // ============================================================
 
-var BOT_URL        = 'https://YOUR-RAILWAY-URL.railway.app/application';
-var WEBHOOK_SECRET = 'YOUR_WEBHOOK_SECRET_HERE'; // Must match /config application-secret
+var BOT_URL        = 'https://dreamybot-production.up.railway.app/application';
+var WEBHOOK_SECRET = '9c086b00a736e2e987c20658626070ef94fa20ea41b0942bf4c9752bd9ba764d'; // Must match /config application-secret
 
 // ─── Column name → field key mapping ────────────────────────────────────────
 // These must match the exact header names in your linked Google Sheet.
 // Open the Sheet (Form responses tab) and check row 1 if anything looks off.
 var COLUMN_MAP = {
   'What is your in-game name? (Both first and last)':                       'in_game_name',
-  'I agree to follow Dreamy Dispositions community rules.':                  'rules_agreed',
+  'Dreamy Disposition\'s Rules:':                                             'rules_agreed',
   'What made you consider our Free Company?':                                'how_found',
   'A new member is feeling a bit lost in the game, how would you help them out?': 'vibe_check',
   'I would like the following welcome package...':                           'welcome_package',
