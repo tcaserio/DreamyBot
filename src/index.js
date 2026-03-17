@@ -3,6 +3,7 @@ const { Client, GatewayIntentBits, Collection, MessageFlags } = require('discord
 const fs = require('fs');
 const path = require('path');
 const { init, getOne, getAll, run } = require('./database');
+const { deployCommands } = require('./deploy-commands');
 const scheduler = require('./scheduler');
 const applications = require('./applications');
 
@@ -140,12 +141,13 @@ client.once('clientReady', () => {
   applications.init(db, client);
 });
 
-// Connect to DB then start bot
+// Connect to DB, deploy commands, then start bot
 init()
   .then(() => {
     console.log('Database initialized.');
-    return client.login(process.env.BOT_TOKEN);
+    return deployCommands();
   })
+  .then(() => client.login(process.env.BOT_TOKEN))
   .catch(err => {
     console.error('Startup failed:', err);
     process.exit(1);
