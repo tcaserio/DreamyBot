@@ -138,13 +138,13 @@ client.once('clientReady', () => {
   console.log(`Logged in as ${client.user.tag}`);
   scheduler.init(db, client);
   scheduler.reschedule();
-  applications.init(db, client);
 });
 
 // Connect to DB, deploy commands, then start bot
 init()
   .then(() => {
     console.log('Database initialized.');
+    applications.init(db, client); // Start HTTP server immediately — independent of Discord
     return deployCommands();
   })
   .then(() => client.login(process.env.BOT_TOKEN))
