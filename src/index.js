@@ -86,6 +86,38 @@ async function handleButton(interaction) {
     return;
   }
 
+  if (customId.startsWith('app_contact_')) {
+    const [prefixed, appId] = customId.split(':');
+    const contactKey = prefixed.replace('app_contact_', ''); // discord | ingame | fcinvite
+
+    const app = await db.getOne('SELECT * FROM applications WHERE id = $1', [appId]);
+    if (!app) {
+      return interaction.reply({ content: 'Application not found.', flags: MessageFlags.Ephemeral });
+    }
+
+    const contactStatus = app.contact_status || {};
+    if (contactStatus[contactKey]) {
+      return interaction.reply({ content: 'That step is already marked as done.', flags: MessageFlags.Ephemeral });
+    }
+
+    contactStatus[contactKey] = {
+      done_by: interaction.user.displayName || interaction.user.username,
+      done_at: new Date().toISOString(),
+    };
+
+    await db.run(
+      'UPDATE applications SET contact_status = $1 WHERE id = $2',
+      [JSON.stringify(contactStatus), appId]
+    );
+
+    const updated = await db.getOne('SELECT * FROM applications WHERE id = $1', [appId]);
+    await interaction.update({
+      embeds:     [applications.buildApplicationMessage(updated)],
+      components: applications.buildComponents(updated),
+    });
+    return;
+  }
+
   if (customId.startsWith('app_gift_')) {
     const [prefixed, appId] = customId.split(':');
     const giftKey = prefixed.replace('app_gift_', ''); // bed | pajama | pillow

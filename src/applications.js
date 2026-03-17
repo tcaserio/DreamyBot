@@ -40,8 +40,21 @@ function buildApplicationMessage(app) {
     });
   }
 
-  // ── Gift tracking (only show after at least one approval) ──
+  // ── Contact tracking + gift tracking (only show after at least one approval) ──
   if (hasApproval) {
+    const contactStatus = app.contact_status || {};
+    const contactLines = [];
+    for (const [key, label] of [['discord', 'Contacted on Discord'], ['ingame', 'Contacted In-Game'], ['fcinvite', 'FC Invitation Sent']]) {
+      const done = contactStatus[key];
+      if (done) {
+        const ts = `<t:${Math.floor(new Date(done.done_at).getTime() / 1000)}:f>`;
+        contactLines.push(`✅ **${label}** — ${done.done_by} ${ts}`);
+      } else {
+        contactLines.push(`○ ${label}`);
+      }
+    }
+    fields.push({ name: 'Onboarding Steps', value: contactLines.join('\n'), inline: false });
+
     const pajamaLabel = app.welcome_package && app.welcome_package !== 'None'
       ? app.welcome_package.replace(/\s*\+.*$/, '').trim()
       : 'Pajama Set';
@@ -86,6 +99,23 @@ function buildComponents(app) {
         .setStyle(ButtonStyle.Danger),
     )
   );
+
+  // Contact + gift buttons (only after at least one approval)
+  if (approvals.length > 0) {
+    const contactStatus = app.contact_status || {};
+    const contactRow = new ActionRowBuilder();
+    for (const [key, label] of [['discord', 'Contacted on Discord'], ['ingame', 'Contacted In-Game'], ['fcinvite', 'FC Invitation Sent']]) {
+      const done = contactStatus[key];
+      contactRow.addComponents(
+        new ButtonBuilder()
+          .setCustomId(`app_contact_${key}:${app.id}`)
+          .setLabel(done ? `✅ ${label}` : label)
+          .setStyle(done ? ButtonStyle.Secondary : ButtonStyle.Primary)
+          .setDisabled(!!done)
+      );
+    }
+    rows.push(contactRow);
+  }
 
   // Gift buttons row (only after at least one approval)
   if (approvals.length > 0) {

@@ -21,6 +21,11 @@ async function init() {
     )
   `);
   await pool.query(`
+    ALTER TABLE applications
+      ADD COLUMN IF NOT EXISTS contact_status JSONB NOT NULL DEFAULT '{}'
+  `).catch(() => {}); // ignore if table doesn't exist yet
+
+  await pool.query(`
     CREATE TABLE IF NOT EXISTS applications (
       id SERIAL PRIMARY KEY,
       in_game_name TEXT NOT NULL,
@@ -32,6 +37,7 @@ async function init() {
       status TEXT NOT NULL DEFAULT 'pending',
       responses JSONB NOT NULL DEFAULT '[]',
       gifts_given JSONB NOT NULL DEFAULT '{}',
+      contact_status JSONB NOT NULL DEFAULT '{}',
       message_id TEXT,
       channel_id TEXT,
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
