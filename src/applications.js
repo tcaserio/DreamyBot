@@ -43,7 +43,7 @@ function buildApplicationMessage(app) {
   // ── Gift tracking (only show after at least one approval) ──
   if (hasApproval) {
     const pajamaLabel = app.welcome_package && app.welcome_package !== 'None'
-      ? app.welcome_package
+      ? app.welcome_package.replace(/\s*\+.*$/, '').trim()
       : 'Pajama Set';
 
     const giftLines = [];
@@ -90,7 +90,7 @@ function buildComponents(app) {
   // Gift buttons row (only after at least one approval)
   if (approvals.length > 0) {
     const pajamaLabel = app.welcome_package && app.welcome_package !== 'None'
-      ? app.welcome_package
+      ? app.welcome_package.replace(/\s*\+.*$/, '').trim()
       : 'Pajama Set';
 
     const giftRow = new ActionRowBuilder();
